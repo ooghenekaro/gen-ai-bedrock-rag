@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research Papers AI Assistant</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.7.14/lottie.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .chat-container {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        #conversation-history {
+            max-height: 500px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            padding: 10px;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .user-message {
+            background-color: #e3f2fd;
+            margin-left: 20%;
+            border-radius: 15px 15px 0 15px;
+        }
+
+        .assistant-message {
+            background-color: #f5f5f5;
+            margin-right: 20%;
+            border-radius: 15px 15px 15px 0;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        #user-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        #send-button {
+            padding: 12px 24px;
+            background-color: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #send-button:hover {
+            background-color: #1976d2;
+        }
+
+        .loading-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+        }
+
+        #lottie-container {
+            width: 200px;
+            height: 200px;
+        }
+
+        .message-header {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .user-header {
+            color: #1565c0;
+        }
+
+        .assistant-header {
+            color: #2e7d32;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 IBT Learning Tech Connect AI Assistant</h1>
+        
+        <div class="chat-container">
+            <div id="conversation-history"></div>
+            
+            <div class="input-container">
+                <input type="text" id="user-input" placeholder="Ask your question...">
+                <button onclick="sendMessage()" id="send-button">Send</button>
+            </div>
+        </div>
+
+        <div id="loading-animation" class="loading-container" style="display: none;">
+            <div id="lottie-container"></div>
+        </div>
+    </div>
+
+    <script>
+        let animation;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Lottie animation
+            animation = lottie.loadAnimation({
+                container: document.getElementById('lottie-container'),
+                renderer: 'svg',
+                loop: true,
+                autoplay: false,
+                path: 'https://assets4.lottiefiles.com/packages/lf20_SkhtL8.json'
+            });
+
+            // Add enter key listener for input
+            document.getElementById('user-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+        });
+
+        async function sendMessage() {
+            const inputElement = document.getElementById('user-input');
+            const userMessage = inputElement.value.trim();
+
+            if (!userMessage) return;
+
+            // Clear input
+            inputElement.value = '';
+
+            // Add user message to conversation
+            addMessageToConversation('You', userMessage, 'user-message');
+
+            // Show loading animation
+            const loadingElement = document.getElementById('loading-animation');
+            loadingElement.style.display = 'block';
+            animation.play();
+
+            try {
+                const response = await callAPI(userMessage);
+                
+                // Add assistant response to conversation
+                if (response && response.generated_response) {
+                    addMessageToConversation('Assistant', response.generated_response, 'assistant-message');
+                } else {
+                    addMessageToConversation('Assistant', 'Sorry, I encountered an error processing your request.', 'assistant-message');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                addMessageToConversation('Assistant', 'Sorry, I encountered an error processing your request.', 'assistant-message');
+            } finally {
+                // Hide loading animation
+                loadingElement.style.display = 'none';
+                animation.stop();
+            }
+
+            // Scroll to bottom of conversation
+            const conversationHistory = document.getElementById('conversation-history');
+            conversationHistory.scrollTop = conversationHistory.scrollHeight;
+        }
+
+        async function callAPI(query) {
+            const API_URL = 'https://mqcb46nbcg.execute-api.eu-west-2.amazonaws.com/dev/chat';
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ user_query: query })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                throw error;
+            }
+        }
+
+        function addMessageToConversation(sender, message, className) {
+            const conversationHistory = document.getElementById('conversation-history');
+            const messageElement = document.createElement('div');
+            messageElement.className = `message ${className}`;
+            
+            const headerElement = document.createElement('div');
+            headerElement.className = `message-header ${className === 'user-message' ? 'user-header' : 'assistant-header'}`;
+            headerElement.textContent = sender;
+            
+            const contentElement = document.createElement('div');
+            contentElement.className = 'message-content';
+            contentElement.textContent = message;
+            
+            messageElement.appendChild(headerElement);
+            messageElement.appendChild(contentElement);
+            conversationHistory.appendChild(messageElement);
+        }
+    </script>
+</body>
+</html>
